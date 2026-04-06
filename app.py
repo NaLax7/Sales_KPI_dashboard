@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Page Configuration
+# --- 1. WIDE LAYOUT ---
 st.set_page_config(
-    page_title="Sales Dashboard", 
+    page_title="Universal Data Dashboard", 
     page_icon=":bar_chart:", 
-    layout="centered" 
+    layout="wide" 
 )
 
 # ------------------------------------------------------------------
@@ -14,28 +14,12 @@ st.set_page_config(
 # ------------------------------------------------------------------
 st.markdown("""
 <style>
-    .stMarkdown, .stTitle, .stSubheader, .stAlert {
-        text-align: center;
-        justify-content: center;
-    }
+    .stMarkdown, .stTitle, .stSubheader, .stAlert { text-align: center; justify-content: center; }
+    .dashboard-title { font-size: 40px !important; font-weight: 700 !important; margin-bottom: 5px !important; color: #333; }
+    .dashboard-subtitle { font-size: 18px !important; color: #666; margin-bottom: 0px !important; }
+    .dashboard-attribution { font-size: 14px !important; color: #888; margin-bottom: 30px !important; }
 
-    .dashboard-title {
-        font-size: 40px !important;
-        font-weight: 700 !important;
-        margin-bottom: 5px !important;
-        color: #333;
-    }
-    .dashboard-subtitle {
-        font-size: 18px !important;
-        color: #666;
-        margin-bottom: 0px !important;
-    }
-    .dashboard-attribution {
-        font-size: 14px !important;
-        color: #888;
-        margin-bottom: 30px !important;
-    }
-
+    /* The Red Button */
     [data-testid="stFileUploaderDropzone"] {
         background-color: #E24A3F !important;
         border: 2px solid #D93F34 !important;
@@ -50,138 +34,122 @@ st.markdown("""
         transition: background-color 0.2s;
         cursor: pointer;
     }
-
-    [data-testid="stFileUploaderDropzone"]:hover {
-        background-color: #D93F34 !important;
-    }
-
-    [data-testid="stFileUploaderDropzone"] button,
-    [data-testid="stFileUploaderDropzone"] small,
-    [data-testid="stFileUploaderDropzone"] div {
-        display: none !important;
-    }
-
+    [data-testid="stFileUploaderDropzone"]:hover { background-color: #D93F34 !important; }
+    [data-testid="stFileUploaderDropzone"] button, [data-testid="stFileUploaderDropzone"] small, [data-testid="stFileUploaderDropzone"] div { display: none !important; }
     [data-testid="stFileUploaderDropzone"]::after {
-        content: "Select CSV file";
-        color: white;
-        font-size: 20px;
-        font-weight: 700;
-        text-align: center;
-        width: 100%;
+        content: "Select CSV or Excel file";
+        color: white; font-size: 20px; font-weight: 700; text-align: center; width: 100%;
     }
-
-    .stMetric {
-        background-color: #f9f9f9;
-        padding: 20px;
-        border-radius: 10px;
-        border: 1px solid #eee;
-    }
+    .stMetric { background-color: #f9f9f9; padding: 20px; border-radius: 10px; border: 1px solid #eee; }
 </style>
 """, unsafe_allow_html=True)
 
 # ------------------------------------------------------------------
-# --- DASHBOARD LAYOUT & CONTENT ---
+# --- HEADER & UPLOADER ---
 # ------------------------------------------------------------------
+st.markdown('<p class="dashboard-title">Universal Data Dashboard</p>', unsafe_allow_html=True)
+st.markdown('<p class="dashboard-subtitle">Upload ANY dataset to generate instant insights.</p>', unsafe_allow_html=True)
 
-st.markdown('<p class="dashboard-title">Interactive Sales & KPI Dashboard</p>', unsafe_allow_html=True)
-st.markdown('<p class="dashboard-subtitle">Analyze your custom sales data instantly.</p>', unsafe_allow_html=True)
-st.markdown('<p class="dashboard-attribution">Powered by Python & Streamlit.</p>', unsafe_allow_html=True)
-
-st.info("⚠️ *Your CSV file must contain the following exact column names: `Date`, `Product`, `Category`, `Revenue`, and `Units_Sold`.*")
-
-uploaded_file = st.file_uploader("", type=["csv"]) 
+# UPDATED: Accept Excel files too
+uploaded_file = st.file_uploader("", type=["csv", "xlsx", "xls"]) 
 
 if uploaded_file is None:
-    st.markdown('<p style="text-align: center; color: #888; font-size: 14px; margin-top: 10px;">or drop CSV data here</p>', unsafe_allow_html=True)
     st.stop() 
 
-# --- READ THE DATA ---
-df = pd.read_csv(uploaded_file)
-st.success("Custom data loaded successfully!")
-st.divider()
+# --- READ ANY DATA (CSV or EXCEL) ---
+try:
+    # Check the file extension to determine how to read it
+    if uploaded_file.name.endswith('.csv'):
+        df = pd.read_csv(uploaded_file)
+    elif uploaded_file.name.endswith(('.xlsx', '.xls')):
+        df = pd.read_excel(uploaded_file)
+except Exception as e:
+    st.error(f"Error reading file: {e}")
+    st.stop()
 
-# Get all unique categories for our dropdowns
-all_categories = df["Category"].unique()
+all_columns = df.columns.tolist()
+numeric_columns = df.select_dtypes(include='number').columns.tolist()
 
-# --- 1. OVERALL KPIs (Always shows total data) ---
-st.subheader("Overall Key Performance Indicators")
-col1, col2, col3 = st.columns(3)
-
-total_revenue = df['Revenue'].sum()
-total_units = df['Units_Sold'].sum()
-avg_price = total_revenue / total_units if total_units > 0 else 0
-
-with col1:
-    st.metric(label="Total Revenue", value=f"${total_revenue:,.2f}")
-with col2:
-    st.metric(label="Total Units Sold", value=total_units)
-with col3:
-    st.metric(label="Avg Price per Unit", value=f"${avg_price:,.2f}")
+if not numeric_columns:
+    st.error("Your dataset must contain at least one column with numbers to generate KPIs!")
+    st.stop()
 
 st.divider()
 
-# --- 2. LINE CHART (With its own filter) ---
-st.subheader("Sales Trend")
-line_categories = st.multiselect(
-    "Filter Trend by Category:", 
-    options=all_categories, 
-    default=all_categories, 
-    key="line_filter" # <-- Unique ID!
-)
+# ------------------------------------------------------------------
+# --- 2. DYNAMIC COLUMN MAPPING ---
+# ------------------------------------------------------------------
+st.markdown("### ⚙️ 1. Map Your Data")
+map_col1, map_col2, map_col3 = st.columns(3)
 
-line_df = df[df["Category"].isin(line_categories)]
+with map_col1:
+    cat_col = st.selectbox("Select your Category/Text column:", all_columns, index=0)
+with map_col2:
+    val_col = st.selectbox("Select your Value/Metric column (Numbers):", numeric_columns, index=0)
+with map_col3:
+    date_col = st.selectbox("Select your Date column (Optional):", ["None"] + all_columns, index=0)
 
-if line_df.empty:
-    st.warning("Please select at least one category to view the trend.")
-else:
-    daily_revenue = line_df.groupby("Date")["Revenue"].sum().reset_index()
-    fig_line = px.line(daily_revenue, x="Date", y="Revenue", markers=True, title="Daily Revenue", template="simple_white")
+# --- GLOBAL FILTER ---
+st.markdown("### 🔍 2. Filter Data")
+_, filter_mid, _ = st.columns([1, 2, 1])
+with filter_mid:
+    unique_categories = df[cat_col].unique()
+    selected_cats = st.multiselect(f"Filter by {cat_col}:", options=unique_categories, default=unique_categories, label_visibility="collapsed")
+
+filtered_df = df[df[cat_col].isin(selected_cats)]
+
+if filtered_df.empty:
+    st.warning("No data selected to display.")
+    st.stop()
+
+st.divider()
+
+# ------------------------------------------------------------------
+# --- 3. WIDE DASHBOARD GRID LAYOUT ---
+# ------------------------------------------------------------------
+st.subheader(f"📊 Analyzing {val_col} grouped by {cat_col}")
+
+# -- ROW 1: KPIs --
+kpi1, kpi2, kpi3, kpi4 = st.columns(4)
+
+total_val = filtered_df[val_col].sum()
+avg_val = filtered_df[val_col].mean()
+max_val = filtered_df[val_col].max()
+total_rows = len(filtered_df)
+
+kpi1.metric(label=f"Total {val_col}", value=f"{total_val:,.2f}")
+kpi2.metric(label=f"Average {val_col}", value=f"{avg_val:,.2f}")
+kpi3.metric(label=f"Max {val_col}", value=f"{max_val:,.2f}")
+kpi4.metric(label="Total Records", value=total_rows)
+
+st.divider()
+
+# -- ROW 2: FULL WIDTH LINE CHART --
+if date_col != "None":
+    trend_data = filtered_df.groupby(date_col)[val_col].sum().reset_index()
+    trend_data = trend_data.sort_values(by=date_col) 
+    fig_line = px.line(trend_data, x=date_col, y=val_col, markers=True, title=f"{val_col} Trend over Time", template="simple_white")
     st.plotly_chart(fig_line, use_container_width=True)
+    st.divider()
+
+# -- ROW 3: CATEGORY CHARTS --
+chart1, chart2 = st.columns(2)
+
+with chart1:
+    bar_data = filtered_df.groupby(cat_col)[val_col].sum().reset_index().sort_values(by=val_col, ascending=False).head(10)
+    fig_bar = px.bar(bar_data, x=cat_col, y=val_col, text_auto=True, color=cat_col, title=f"Top 10 {cat_col} by {val_col}", template="simple_white")
+    fig_bar.update_layout(showlegend=False)
+    st.plotly_chart(fig_bar, use_container_width=True)
+
+with chart2:
+    pie_data = filtered_df.groupby(cat_col)[val_col].sum().reset_index()
+    fig_pie = px.pie(pie_data, names=cat_col, values=val_col, hole=0.4, title=f"Distribution of {val_col} across {cat_col}", template="simple_white")
+    fig_pie.update_traces(textposition='inside', textinfo='percent+label')
+    fig_pie.update_layout(showlegend=False)
+    st.plotly_chart(fig_pie, use_container_width=True)
 
 st.divider()
 
-# --- 3. SIDE-BY-SIDE BAR CHARTS (Each with its own filter) ---
-chart_col1, chart_col2 = st.columns(2)
-
-with chart_col1:
-    st.markdown("### Revenue by Category")
-    cat_categories = st.multiselect(
-        "Select Categories to compare:", 
-        options=all_categories, 
-        default=all_categories, 
-        key="cat_filter" # <-- Unique ID!
-    )
-    
-    cat_df = df[df["Category"].isin(cat_categories)]
-    
-    if cat_df.empty:
-        st.warning("Please select a category.")
-    else:
-        category_revenue = cat_df.groupby("Category")["Revenue"].sum().reset_index()
-        fig_cat = px.bar(category_revenue, x="Category", y="Revenue", text_auto=True, color="Category", title="", template="simple_white") 
-        fig_cat.update_layout(showlegend=False)
-        st.plotly_chart(fig_cat, use_container_width=True)
-
-with chart_col2:
-    st.markdown("### Top Products")
-    prod_categories = st.multiselect(
-        "Filter products by Category:", 
-        options=all_categories, 
-        default=all_categories, 
-        key="prod_filter" # <-- Unique ID!
-    )
-    
-    prod_df = df[df["Category"].isin(prod_categories)]
-    
-    if prod_df.empty:
-        st.warning("Please select a category.")
-    else:
-        product_revenue = prod_df.groupby("Product")["Revenue"].sum().reset_index().sort_values(by="Revenue", ascending=True)
-        fig_prod = px.bar(product_revenue, x="Revenue", y="Product", orientation='h', text_auto=True, title="", template="simple_white") 
-        st.plotly_chart(fig_prod, use_container_width=True)
-
-st.divider()
-
-# --- 4. RAW DATA ---
-st.subheader("Raw Sales Data")
-st.dataframe(df, use_container_width=True)
+# -- ROW 4: RAW DATA --
+st.markdown("### 🗃️ Raw Data View")
+st.dataframe(filtered_df, use_container_width=True)
