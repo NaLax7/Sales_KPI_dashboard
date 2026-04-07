@@ -19,7 +19,6 @@ st.markdown("""
     .dashboard-subtitle { font-size: 18px !important; color: #666; margin-bottom: 0px !important; }
     .dashboard-attribution { font-size: 14px !important; color: #888; margin-bottom: 30px !important; }
 
-    /* The Red Button */
     [data-testid="stFileUploaderDropzone"] {
         background-color: #E24A3F !important;
         border: 2px solid #D93F34 !important;
@@ -50,19 +49,22 @@ st.markdown("""
 st.markdown('<p class="dashboard-title">Universal Data Dashboard</p>', unsafe_allow_html=True)
 st.markdown('<p class="dashboard-subtitle">Upload ANY dataset to generate instant insights.</p>', unsafe_allow_html=True)
 
-# UPDATED: Accept Excel files too
 uploaded_file = st.file_uploader("", type=["csv", "xlsx", "xls"]) 
 
 if uploaded_file is None:
     st.stop() 
 
-# --- READ ANY DATA (CSV or EXCEL) ---
+# --- NEW: CACHING THE DATA (Lightning Fast!) ---
+# This decorator tells Streamlit to save the data in memory after the first load
+@st.cache_data
+def load_data(file):
+    if file.name.endswith('.csv'):
+        return pd.read_csv(file)
+    elif file.name.endswith(('.xlsx', '.xls')):
+        return pd.read_excel(file)
+
 try:
-    # Check the file extension to determine how to read it
-    if uploaded_file.name.endswith('.csv'):
-        df = pd.read_csv(uploaded_file)
-    elif uploaded_file.name.endswith(('.xlsx', '.xls')):
-        df = pd.read_excel(uploaded_file)
+    df = load_data(uploaded_file)
 except Exception as e:
     st.error(f"Error reading file: {e}")
     st.stop()
@@ -150,6 +152,30 @@ with chart2:
 
 st.divider()
 
-# -- ROW 4: RAW DATA --
+# -- NEW: ROW 4: SCATTER PLOT (CORRELATION) --
+# Only show this section if the dataset has at least 2 numeric columns to compare
+if len(numeric_columns) >= 2:
+    st.markdown("### 🔬 Deep Dive: Correlation Analysis")
+    st.markdown("<p style='text-align: center; color: #666;'>See how two different metrics relate to one another.</p>", unsafe_allow_html=True)
+    
+    scat_col1, scat_col2 = st.columns(2)
+    with scat_col1:
+        x_axis = st.selectbox("X-Axis Metric:", numeric_columns, index=0)
+    with scat_col2:
+        y_axis = st.selectbox("Y-Axis Metric:", numeric_columns, index=1)
+        
+    fig_scatter = px.scatter(
+        filtered_df, 
+        x=x_axis, 
+        y=y_axis, 
+        color=cat_col, 
+        opacity=0.7,
+        title=f"Correlation: {x_axis} vs {y_axis}", 
+        template="simple_white"
+    )
+    st.plotly_chart(fig_scatter, use_container_width=True)
+    st.divider()
+
+# -- ROW 5: RAW DATA --
 st.markdown("### 🗃️ Raw Data View")
 st.dataframe(filtered_df, use_container_width=True)
