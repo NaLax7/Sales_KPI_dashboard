@@ -2,7 +2,7 @@
 
 **Live Demo:** https://saleskpidashboard-rq23hjmsflmy8xjeucnv5f.streamlit.app/
 
-![App Demo]([DRAG_AND_DROP_YOUR_GIF_HERE])
+![KPI app](https://github.com/user-attachments/assets/0588f9ba-5f00-4f78-8f93-d338b088db79)
 
 - Overview
 This is a dynamic, high-performance web application designed to democratize data analysis. Instead of relying on hardcoded column names or specific datasets, this "universal" dashboard allows users to upload **any** standard CSV or Excel file and instantly generate insights. 
@@ -35,5 +35,5 @@ To get the best results out of this dashboard, your uploaded dataset should foll
 - How to Run Locally
 If you want to run this project on your own machine:
 1. Clone this repository:
-   ```bash
+   bash
    git clone [https://github.com/YOUR_GITHUB_USERNAME/Sales_KPI_dashboard.git](https://github.com/YOUR_GITHUB_USERNAME/Sales_KPI_dashboard.git)
