@@ -4,12 +4,12 @@
 
 ![KPI app](https://github.com/user-attachments/assets/0588f9ba-5f00-4f78-8f93-d338b088db79)
 
-- Overview
-This is a dynamic, high-performance web application designed to democratize data analysis. Instead of relying on hardcoded column names or specific datasets, this "universal" dashboard allows users to upload **any** standard CSV or Excel file and instantly generate insights. 
+Overview
+This is a dynamic, high-performance web application designed to democratize data analysis. Instead of relying on hardcoded column names or specific datasets, this "universal" dashboard allows users to upload any standard CSV or Excel file and instantly generate insights. 
 
 It acts as a lightweight alternative to heavy BI tools like Tableau or PowerBI, offering an intuitive, centered UI and dynamic chart generation.
 
-- Key Features
+Key Features
 * **Universal File Support:** Accepts both `.csv` and `.xlsx` / `.xls` files.
 * **Dynamic Data Mapping:** Automatically detects numeric vs. categorical columns, allowing the user to map their own X and Y axes on the fly.
 * **High-Performance Caching:** Utilizes Streamlit's `@st.cache_data` to store data in memory, ensuring the app remains lightning-fast even when processing large datasets.
